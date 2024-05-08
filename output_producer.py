@@ -1,28 +1,51 @@
+import sys
+from PyQt5.QtCore import QThread, pyqtSignal
 import openpyxl
 from parser import *
 
-def worker(path_in, path_out):
-    is_succeed = False # Флаг о статусе операции
-    files = get_pdf_files(path_in)
+class WorkerThread(QThread):
+    progress_updated = pyqtSignal(int)
+    log_updated = pyqtSignal(str)
 
-    # Create a xlcx file
-    workbook = openpyxl.Workbook()
-    # Add a worksheet
-    worksheet = workbook.active
-    # Write data to a cell
-    worksheet['A1'] = 'Изменение'
-    worksheet['B1'] = 'Ссылка на файл'
-    row = 2
-    for file in files:
-        last_number = get_last_number(file)
-        number_of_doc = get_document_number(file)
-        
-        worksheet.cell(row=row, column=1, value=f"{last_number}")
-        worksheet.cell(row=row, column=3, value=f"{file}")
-        row += 1
-        print(f"{last_number} - {number_of_doc} - {file}")
-    # Save the workbook
-    workbook.save(path_out)
-    workbook.close()
-    is_succeed = True
-    return is_succeed
+    def __init__(self, path_in, path_out):
+        super().__init__()
+        self.path_in = path_in
+        self.path_out = path_out
+
+    def run(self):
+        files = get_pdf_files(self.path_in)
+        total_files = len(files)
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.column_dimensions['A'].width = 40
+        worksheet.column_dimensions['B'].width = 30
+        cell_a1 = worksheet['A1']
+        cell_a1.value = "Номер последнего изменения документа"
+        cell_b1 = worksheet['B1']
+        cell_b1.value = "Обозначение документа"
+        header = openpyxl.styles.Font(color="FF0000")
+        hyperlink = openpyxl.styles.Font(underline='single', color='0563C1')
+        cell_a1.font = header
+        cell_b1.font = header
+        row = 2
+        for idx, file in enumerate(files, start=1):
+            last_number = get_last_number(file)
+            link = file
+            doc_num = get_document_number(file)
+            cell_ai = worksheet.cell(row=row, column=1)
+            cell_bi = worksheet.cell(row=row, column=2)
+            try:
+                cell_ai.value = f"{last_number}"
+                cell_bi.value = '=HYPERLINK("{}", "{}")'.format(link, f"{doc_num}")
+                cell_bi.font = hyperlink
+                row += 1
+            except openpyxl.utils.exceptions.IllegalCharacterError as illegalCharacterError:
+                cell_ai.value = f"{last_number}"
+                cell_bi.value = '=HYPERLINK("{}", "{}")'.format(link, "Invalid text")
+                cell_bi.font = hyperlink
+                row += 1
+            progress_percentage = idx * 100 // total_files
+            self.progress_updated.emit(progress_percentage)
+            self.log_updated.emit(f"Обработано файлов: {idx}/{total_files}: {last_number} - {doc_num} - {file}")
+        workbook.save(self.path_out)
+        workbook.close()

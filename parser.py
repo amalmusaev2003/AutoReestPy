@@ -74,6 +74,6 @@ def get_document_number(file):
   
 '''
 # test
-res = get_document_number("E:/CodeProjects/task/first/01_11-10.1-17-301-ОВ_Изм.2.pdf")
-print(res)
+res = get_document_number("E:/CodeProjects/task/first/11-10_1-17-044-АС_01 (изм.1).pdf")
+print(extractor("E:/CodeProjects/task/first/11-10_1-17-044-АС_01 (изм.1).pdf", "d"))
 '''

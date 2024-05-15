@@ -21,7 +21,12 @@ def extractor(path, object):
 
 #Достаем все файлы с расширением .pdf из папки
 def get_pdf_files(folder_path):
-    return [os.path.join(folder_path, filename) for filename in os.listdir(folder_path) if filename.lower().endswith(".pdf")]
+    pdf_files = []
+    for root, _, files in os.walk(folder_path):
+      for filename in files:
+        if filename.lower().endswith(".pdf"):
+          pdf_files.append(os.path.join(root, filename))
+    return pdf_files
 
 #Фильтруем все таблицы с помощью регулярных выражений
 def filter_tables(table) -> list:
